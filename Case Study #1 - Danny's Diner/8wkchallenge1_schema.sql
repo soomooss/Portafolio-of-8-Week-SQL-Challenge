@@ -282,7 +282,7 @@ SELECT
 			)
 		ELSE NULL
 		END AS ranking
-FROM ctee
+FROM ctee;
 
 
 

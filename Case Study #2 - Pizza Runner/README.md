@@ -767,19 +767,214 @@ ORDER BY 3 DESC;
 
 ## 💰 Sección D: Pricing and Ratings
 
-###
+### 1. If a Meat Lovers pizza costs $12 and Vegetarian costs $10 and there were no charges for changes - how much money has Pizza Runner made so far if there are no delivery fees?
 ```sql
-
+SELECT
+	SUM(
+	CASE 
+		WHEN pn.pizza_name = 'Meatlovers' THEN 12
+		WHEN pn.pizza_name = 'Vegetarian' THEN 10
+		ELSE 0
+	END) AS money_made
+FROM clean_customer_orders AS cco
+INNER JOIN clean_runner_orders AS cro
+	ON cco.order_id = cro.order_id
+INNER JOIN pizza_runner.pizza_names AS pn
+	ON cco.pizza_id = pn.pizza_id
+WHERE cro.cancellation IS NULL;
 ```
 **Resultado:**
+| money_made |
+|------------|
+| 138        |
+
+### 2. What if there was an additional $1 charge for any pizza extras?
+```sql
+WITH base AS (
+	SELECT
+		cco.order_id,
+		ROW_NUMBER () OVER (ORDER BY cco.order_id) AS record_id,
+		cco.pizza_id,
+		pn.pizza_name,
+		cco.extras
+	FROM clean_customer_orders AS cco
+	INNER JOIN clean_runner_orders AS cro
+		ON cco.order_id = cro.order_id
+	INNER JOIN pizza_runner.pizza_names AS pn
+		ON cco.pizza_id = pn.pizza_id
+	WHERE cro.cancellation IS NULL
+),
+m_extras AS (
+	SELECT
+		b.record_id,
+		SUM(1) AS monto_extras
+	FROM base AS b
+	CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(extras,',')::INTEGER[]) AS temp(extras)
+	GROUP BY b.record_id
+)
+SELECT
+	SUM(
+	CASE 
+		WHEN b.pizza_name = 'Meatlovers' THEN 12
+		WHEN b.pizza_name = 'Vegetarian' THEN 10
+		ELSE 0
+	END  + COALESCE(m_extras.monto_extras,0)) AS total
+FROM base AS b
+LEFT JOIN m_extras
+ON b.record_id = m_extras.record_id;
+```
+**Resultado:**
+| total |
+|-------|
+| 142   |
+
+
+
+### The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner, how would you design an additional table for this new dataset - generate a schema for this new table and insert your own data for ratings for each successful customer order between 1 to 5.
+```sql
+CREATE TABLE pizza_runner.runner_rating (
+	"order_id" INTEGER,
+	"runner_id" INTEGER,
+	"rating" INTEGER CHECK (rating BETWEEN 1 AND 5)
+);
+
+INSERT INTO pizza_runner.runner_rating
+  ("order_id", "runner_id", "rating")
+VALUES
+  (1, 1, 5 ),
+  (2, 1, 4),
+  (3, 1, 3),
+  (4, 2, 1),
+  (5, 3, 5),
+  (7, 2, 3),
+  (8, 2, 4),
+  (10, 1, 5);
+```
+**Resultado:**
+| order_id | runner_id | rating |
+|----------|-----------|--------|
+| 1        | 1         | 5      |
+| 2        | 1         | 4      |
+| 3        | 1         | 3      |
+| 4        | 2         | 1      |
+| 5        | 3         | 5      |
+| 7        | 2         | 3      |
+| 8        | 2         | 4      |
+| 10       | 1         | 5      |
+
+### 4.Using your newly generated table - can you join all of the information together to form a table which has the following information for successful deliveries?
+	-customer_id
+	-order_id
+	-runner_id
+	-rating
+	-order_time
+	-pickup_time
+	-Time between order and pickup
+	-Delivery duration
+	-Average speed
+	-Total number of pizzas
+```sql
+SELECT 
+	cco.customer_id,
+	cco.order_id,
+	cro.runner_id,
+	rr.rating,
+	cco.order_time,
+	cro.pickup_time,
+	ROUND(EXTRACT(EPOCH FROM cro.pickup_time - cco.order_time)/60,2) AS time_between_order_and_pickup,
+	cro.duration AS delivery_duration,
+	ROUND(cro.distance/(NULLIF(cro.duration,0)/60.0),2) AS avg_speed,
+	COUNT(cco.order_id) AS total_number_of_pizzas
+FROM clean_customer_orders AS cco
+INNER JOIN clean_runner_orders AS cro
+	ON cco.order_id = cro.order_id
+LEFT JOIN pizza_runner.runner_rating AS rr
+	ON cco.order_id = rr.order_id
+WHERE cro.cancellation IS NULL
+GROUP BY cco.customer_id, cco.order_id, cro.runner_id, rr.rating, cco.order_time, cro.pickup_time, cro.duration, cro.distance
+ORDER BY cco.order_id;
+```
+**Resultado:**
+| customer_id | order_id | runner_id | rating | order_time          | pickup_time         | time_between_order_and_pickup | delivery_duration | avg_speed | total_number_of_pizzas |
+|-------------|----------|-----------|--------|---------------------|---------------------|-------------------------------|-------------------|-----------|------------------------|
+| 101         | 1        | 1         | 5      | 2020-01-01 18:05:02 | 2020-01-01 18:15:34 | 10.53                         | 32                | 37.50     | 1                      |
+| 101         | 2        | 1         | 4      | 2020-01-01 19:00:52 | 2020-01-01 19:10:54 | 10.03                         | 27                | 44.44     | 1                      |
+| 102         | 3        | 1         | 3      | 2020-01-02 23:51:23 | 2020-01-03 00:12:37 | 21.23                         | 20                | 40.20     | 2                      |
+| 103         | 4        | 2         | 1      | 2020-01-04 13:23:46 | 2020-01-04 13:53:03 | 29.28                         | 40                | 35.10     | 3                      |
+| 104         | 5        | 3         | 5      | 2020-01-08 21:00:29 | 2020-01-08 21:10:57 | 10.47                         | 15                | 40.00     | 1                      |
+| 105         | 7        | 2         | 3      | 2020-01-08 21:20:29 | 2020-01-08 21:30:45 | 10.27                         | 25                | 60.00     | 1                      |
+| 102         | 8        | 2         | 4      | 2020-01-09 23:54:33 | 2020-01-10 00:15:02 | 20.48                         | 15                | 93.60     | 1                      |
+| 104         | 10       | 1         | 5      | 2020-01-11 18:34:49 | 2020-01-11 18:50:20 | 15.52                         | 10                | 60.00     | 2                      |
+
+### 5. If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometre traveled - how much money does Pizza Runner have left over after these deliveries?
+```sql
+WITH resume AS (
+	SELECT 
+		cco.order_id,
+		COUNT(cco.order_id) AS total_pizzas,
+		cro.distance,
+		SUM(CASE 
+			WHEN pn.pizza_name = 'Meatlovers' THEN 12.0
+			WHEN pn.pizza_name = 'Vegetarian' THEN 10.0
+			END) AS total_price
+	FROM clean_customer_orders AS cco
+	INNER JOIN clean_runner_orders AS cro
+		ON cco.order_id = cro.order_id
+	INNER JOIN pizza_runner.pizza_names AS pn
+		ON cco.pizza_id = pn.pizza_id
+	WHERE cro.cancellation IS NULL
+	GROUP BY cco.order_id, cro.distance
+)
+SELECT 
+	SUM(total_price - (distance * 0.30)) AS earnings
+FROM resume
+```
+**Resultado:**
+| earnings |
+|----------|
+| 94.440   |
 ---
 ## 🚀 Sección E: Bonus Challenge
+### 1. If Danny wants to expand his range of pizzas - how would this impact the existing data design? Write an INSERT statement to demonstrate what would happen if a new Supreme pizza with all the toppings was added to the Pizza Runner menu?
 
-###
 ```sql
+INSERT INTO pizza_runner.pizza_names 
+	("pizza_id", "pizza_name")
+	VALUES (3,'Supreme');
 
+--brigde table
+CREATE TABLE pizza_runner.pizza_recipes_relational(
+	"pizza_id" INTEGER,
+	"topping_id" INTEGER,
+	PRIMARY KEY (pizza_id, topping_id)
+);
+INSERT INTO pizza_runner.pizza_recipes_relational ("pizza_id", "topping_id")
+	VALUES 	(3,1),(3,2),(3,3),(3,4),(3,5),(3,6),
+			(3,7),(3,8),(3,9),(3,10),(3,11),(3,12);
 ```
 **Resultado:**
+| pizza_id | pizza_name |
+|----------|------------|
+| 1        | Meatlovers |
+| 2        | Vegetarian |
+| 3        | Supreme    |
+
+| pizza_id | topping_id |
+|----------|------------|
+| 3        | 1          |
+| 3        | 2          |
+| 3        | 3          |
+| 3        | 4          |
+| 3        | 5          |
+| 3        | 6          |
+| 3        | 7          |
+| 3        | 8          |
+| 3        | 9          |
+| 3        | 10         |
+| 3        | 11         |
+| 3        | 12         |
+
+
 ---
 
 

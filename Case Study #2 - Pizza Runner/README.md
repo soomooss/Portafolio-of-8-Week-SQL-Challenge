@@ -14,7 +14,7 @@ Este proyecto expande el uso de SQL abordando la limpieza de datos y métricas o
 ---
 
 ## 🧼 Fase de Limpieza de Datos (Data Cleansing)
-```sq
+```sql
 CREATE TEMP TABLE clean_customer_orders AS
 	SELECT
 		order_id,
@@ -277,9 +277,177 @@ ORDER BY EXTRACT(DOW FROM order_time);
 ---
 
 ## 🏃‍♂️ Sección B: Runner and Customer Experience
-###
+
+### 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
 ```sql
+WITH week_calculation AS (
+	SELECT 
+		runner_id,
+		(DATE_TRUNC('week',registration_date + INTERVAL '3 days') - INTERVAL '3 days')::DATE AS start_week
+	FROM pizza_runner.runners),
+ranked_weeks AS (
+	SELECT
+		runner_id,
+		start_week,
+		DENSE_RANK() OVER( ORDER BY start_week) AS week_num
+	FROM week_calculation
+)
+SELECT 
+	'wk' || week_num AS registration_week,
+	COUNT(runner_id) AS runner_signups
+FROM ranked_weeks
+GROUP BY week_num, registration_week
+ORDER BY week_num;
 ```
 **Resultado:**
-### 1. How many runners signed up for each 1 week period?
-*(Aquí va tu consulta avanzada de la semana con el DATE_TRUNC)*
+| registration_week | runner_signups |
+|-------------------|----------------|
+| wk1               | 2              |
+| wk2               | 1              |
+| wk3               | 1              |
+
+
+### 2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+```sql
+SELECT 
+	cro.runner_id ,
+	ROUND(AVG( EXTRACT(EPOCH FROM cro.pickup_time - cco.order_time )/60),2) AS avg_time_to_arrive_in_HQ
+	FROM clean_customer_orders AS cco
+INNER JOIN clean_runner_orders AS cro
+	ON cco.order_id = cro.order_id
+WHERE cro.cancellation IS NULL
+GROUP BY 1;
+```
+**Resultado:**
+| runner_id | avg_time_to_arrive_in_hq |
+|-----------|--------------------------|
+| 1         | 15.68                    |
+| 2         | 23.72                    |
+| 3         | 10.47                    |
+
+
+### 3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+```sql
+WITH preparation AS (
+	SELECT 
+		cco.order_id,
+		COUNT(cco.order_id) AS number_of_pizzas,
+		EXTRACT(EPOCH FROM cro.pickup_time - cco.order_time )/60 AS total_preparation_time
+		FROM clean_customer_orders AS cco
+	INNER JOIN clean_runner_orders AS cro
+		ON cco.order_id = cro.order_id
+	WHERE cro.cancellation IS NULL
+	GROUP BY cco.order_id,cro.pickup_time,cco.order_time)
+
+SELECT
+	number_of_pizzas,
+	ROUND(AVG(total_preparation_time),2) as avg_time_per_order,
+	ROUND(AVG(total_preparation_time / number_of_pizzas),2) as avg_time_per_pizza
+FROM preparation
+GROUP BY number_of_pizzas;
+```
+**Resultado:**
+| number_of_pizzas | avg_time_per_order | avg_time_per_pizza |
+|------------------|--------------------|--------------------|
+| 1                | 12.36              | 12.36              |
+| 2                | 18.38              | 9.19               |
+| 3                | 29.28              | 9.76               |
+
+### 4. What was the average distance travelled for each customer?
+```sql
+SELECT 
+	customer_id, 
+	ROUND(AVG(distance),2) AS distance_in_km
+FROM clean_customer_orders AS cco
+INNER JOIN clean_runner_orders AS cro
+	ON cco.order_id = cro.order_id
+WHERE cro.cancellation IS NULL
+GROUP BY customer_id;
+```
+**Resultado:**
+| customer_id | distance_in_km |
+|-------------|----------------|
+| 101         | 20.00          |
+| 102         | 16.73          |
+| 103         | 23.40          |
+| 104         | 10.00          |
+| 105         | 25.00          |
+
+### 5. What was the difference between the longest and shortest delivery times for all orders?
+```sql
+SELECT 
+	MAX(duration) - MIN(duration) AS difference_in_time
+FROM clean_runner_orders
+WHERE cancellation IS NULL;
+```
+**Resultado:**
+| difference_in_time |
+|--------------------|
+| 30                 |
+
+### 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
+```sql
+SELECT 
+	runner_id,
+	order_id,
+	distance,
+	duration,
+	ROUND(distance/(duration/60.0),2) AS speed_kmh
+FROM clean_runner_orders
+WHERE cancellation IS NULL
+ORDER BY runner_id, order_id;
+```
+**Resultado:**
+| runner_id | order_id | distance | duration | speed_kmh |
+|-----------|----------|----------|----------|-----------|
+| 1         | 1        | 20       | 32       | 37.50     |
+| 1         | 2        | 20       | 27       | 44.44     |
+| 1         | 3        | 13.4     | 20       | 40.20     |
+| 1         | 10       | 10       | 10       | 60.00     |
+| 2         | 4        | 23.4     | 40       | 35.10     |
+| 2         | 7        | 25       | 25       | 60.00     |
+| 2         | 8        | 23.4     | 15       | 93.60     |
+| 3         | 5        | 10       | 15       | 40.00     |
+
+
+### 7. What is the successful delivery percentage for each runner?
+```sql
+SELECT
+	runner_id,
+	COUNT(order_id) AS number_of_orders,
+	SUM(CASE WHEN cancellation IS NULL THEN 1 ELSE 0 END) AS successful_del,
+	ROUND(100.0 * SUM(CASE WHEN cancellation IS NULL THEN 1 ELSE 0 END)/COUNT(order_id),2) AS percentage
+FROM clean_runner_orders
+GROUP BY runner_id;
+```
+**Resultado:**
+| runner_id | number_of_orders | successful_del | percentage |
+|-----------|------------------|----------------|------------|
+| 3         | 2                | 1              | 50.00      |
+| 2         | 4                | 3              | 75.00      |
+| 1         | 4                | 4              | 100.00     |
+
+---
+## 🍪 Sección C: Ingredient Optimisation
+
+
+###
+```sql
+
+```
+**Resultado:**
+---
+
+## 💰 Sección D: Pricing and Ratings
+
+## 🚀 Sección E: Bonus Challenge
+
+
+
+
+
+
+
+
+
+

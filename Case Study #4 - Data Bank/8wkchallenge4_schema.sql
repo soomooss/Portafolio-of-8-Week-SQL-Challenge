@@ -9807,7 +9807,6 @@ bloques AS (
 	SELECT
 		c.customer_id,
 		c.txn_date,
-		s.txn_type,
 		s.running_balance,
 		COUNT(s.running_balance) OVER (PARTITION BY c.customer_id ORDER BY c.txn_date ) AS grupos
 	FROM calendario AS c

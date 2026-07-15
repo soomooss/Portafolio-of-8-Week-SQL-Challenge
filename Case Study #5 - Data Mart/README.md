@@ -1,5 +1,5 @@
 # 🧺 Case Study #5 - Data Mart
-URL https://8weeksqlchallenge.com/case-study-5/ 
+URL https://8weeksqlchallenge.com/case-study-5/
 URL https://www.db-fiddle.com/f/jmnwogTsUE8hGqkZv9H7E8/8
 
 ## 📌 Business Overview

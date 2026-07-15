@@ -17205,7 +17205,7 @@ FROM data_mart.clean_weekly_sales;
 
 
 ---2. What range of week numbers are missing from the dataset?
-----the range of week numbers in this data is from 12 to 36, hence 1 to 11 and 36 to 52
+----the range of week numbers in this data is from 12 to 36, hence 1 to 11 and 37 to 52
 WITH total_weeks AS (
 	SELECT GENERATE_SERIES(1,52) as week_number
 )

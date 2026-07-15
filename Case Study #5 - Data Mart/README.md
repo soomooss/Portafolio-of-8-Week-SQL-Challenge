@@ -60,7 +60,6 @@ CREATE TABLE data_mart.clean_weekly_sales AS (
 	FROM data_mart.weekly_sales
 	ORDER BY week_date 
 )
-
 ```
 
 ---

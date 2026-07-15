@@ -1,10 +1,13 @@
 # 🧺 Case Study #5 - Data Mart
 URL https://8weeksqlchallenge.com/case-study-5/
+
 URL https://www.db-fiddle.com/f/jmnwogTsUE8hGqkZv9H7E8/8
 
 ## 📌 Business Overview
 In June 2020 - large scale supply changes were made at Data Mart. All Data Mart products now use sustainable packaging methods in every single step from the farm all the way to the customer.
+
 Danny needs your help to quantify the impact of this change on the sales performance for Data Mart and it’s separate business areas.
+
 The key business question he wants you to help him answer are the following:
 
 -What was the quantifiable impact of the changes introduced in June 2020?

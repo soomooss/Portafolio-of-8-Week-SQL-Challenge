@@ -10,11 +10,12 @@ Danny needs your help to quantify the impact of this change on the sales perform
 
 The key business question he wants you to help him answer are the following:
 
--What was the quantifiable impact of the changes introduced in June 2020?
--Which platform, region, segment and customer types were the most impacted by this change?
--What can we do about future introduction of similar sustainability updates to the business to minimise impact on sales?
-
-
+- What was the quantifiable impact of the changes introduced in June 2020?
+	Using the metrics of 4 weeks before and after, there is an increase of 0.17% in the sales, but using the 12 weeks there is a decrease of 9.27% of sales.
+- Which platform, region, segment and customer types were the most impacted by this change?
+  	South America, shopify and retail - the reduction of sales in all age band and demographics.
+- What can we do about future introduction of similar sustainability updates to the business to minimise impact on sales?
+	First make the change in one location to see the impact and then move to another location, like in Canada make the change see the impact in 12 weeks in both platforms.
 ---
 
 ## A.Data Cleansing Steps
